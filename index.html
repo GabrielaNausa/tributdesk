@@ -135,6 +135,8 @@
             <li><span data-icon="check" data-size="16"></span>Calculadora de IVA</li>
             <li><span data-icon="check" data-size="16"></span>Conversor UVT ↔ pesos</li>
             <li><span data-icon="check" data-size="16"></span>Estimador de retención en la fuente</li>
+            <li><span data-icon="check" data-size="16"></span>Liquidador de sanciones e intereses de mora</li>
+            <li><span data-icon="check" data-size="16"></span>Calendario de vencimientos</li>
           </ul>
           <a class="link" href="#herramientas">Ir a herramientas <span data-icon="arrow-right" data-size="16"></span></a>
         </article>
@@ -186,7 +188,7 @@
 
     <section class="section" style="padding-top:36px">
       <div class="container">
-        <p class="notice">Estas entradas son un directorio base de normas conocidas. Antes de aplicar cualquier norma, confirme su texto vigente y sus modificaciones en la fuente oficial.</p>
+        <p class="notice">Los PDF y textos vienen de fuentes oficiales (Gestor Normativo de Función Pública y normograma de la DIAN) y se abren en esos sitios. Muchas normas tienen modificaciones: confirme siempre el texto vigente antes de aplicarlas.</p>
 
         <div class="search-row">
           <div class="search-wrap">
@@ -200,10 +202,22 @@
           <button class="chip" type="button" data-cat="Contable" aria-pressed="false">Contable</button>
           <button class="chip" type="button" data-cat="Laboral" aria-pressed="false">Laboral</button>
           <button class="chip" type="button" data-cat="Comercial" aria-pressed="false">Comercial</button>
+          <button class="chip" type="button" data-cat="Reformas" aria-pressed="false">Reformas</button>
         </div>
+        <p class="hint" id="norm-count" aria-live="polite" style="margin:-8px 0 14px"></p>
 
         <div class="norm-list" id="norm-list" aria-live="polite"></div>
         <p class="empty" id="norm-empty" hidden>No encontramos normas con esa búsqueda.</p>
+
+        <div class="card sources">
+          <h3>Buscar más en las fuentes oficiales</h3>
+          <p>Si la norma que necesita no está en la lista, búsquela directamente aquí:</p>
+          <ul>
+            <li><a href="https://normograma.dian.gov.co/dian/" target="_blank" rel="noopener noreferrer">Normograma de la DIAN</a>: normas, conceptos y resoluciones tributarias y aduaneras.</li>
+            <li><a href="https://www.funcionpublica.gov.co/eva/gestornormativo/" target="_blank" rel="noopener noreferrer">Gestor Normativo de Función Pública</a>: leyes, decretos y sentencias, con PDF.</li>
+            <li><a href="https://www.suin-juriscol.gov.co/" target="_blank" rel="noopener noreferrer">SUIN-Juriscol</a>: normas con su estado de vigencia.</li>
+          </ul>
+        </div>
       </div>
     </section>
   </template>
@@ -282,8 +296,93 @@
         </article>
       </div>
 
-      <div class="container" style="margin-top:28px">
-        <p class="notice" style="margin:0">Próximamente: calendario tributario, liquidador de sanciones e intereses de mora.</p>
+      <div class="container grid grid-2" style="margin-top:20px;align-items:start">
+
+        <article class="card tool" id="tool-san">
+          <span class="tile tile--navy" data-icon="scale"></span>
+          <h3 style="margin-top:16px">Liquidador de sanciones</h3>
+          <div class="field">
+            <label for="san-tipo">Tipo de sanción</label>
+            <select id="san-tipo">
+              <option value="ext">Extemporaneidad (art. 641 E.T.)</option>
+              <option value="cor">Corrección (art. 644 E.T.)</option>
+              <option value="ine">Inexactitud (art. 647 E.T.)</option>
+            </select>
+          </div>
+          <div id="san-ext">
+            <div class="row">
+              <div class="field"><label for="san-venc">Fecha de vencimiento</label><input type="date" id="san-venc" value="2026-03-10"></div>
+              <div class="field"><label for="san-pres">Fecha de presentación</label><input type="date" id="san-pres" value="2026-04-02"></div>
+            </div>
+            <div class="field">
+              <label for="san-caso">Caso de la declaración</label>
+              <select id="san-caso">
+                <option value="imp">Con impuesto a cargo</option>
+                <option value="ing">Sin impuesto a cargo, con ingresos</option>
+                <option value="pat">Sin impuesto ni ingresos, con patrimonio líquido</option>
+              </select>
+            </div>
+          </div>
+          <div class="field" id="san-cor-nivel" hidden>
+            <label for="san-momento">Momento de la corrección</label>
+            <select id="san-momento">
+              <option value="0.1">Antes de emplazamiento o visita (10 %)</option>
+              <option value="0.2">Después de emplazamiento o visita (20 %)</option>
+            </select>
+          </div>
+          <div class="field"><label for="san-base" id="san-base-label">Impuesto a cargo (COP)</label><input type="number" id="san-base" inputmode="decimal" min="0" step="any" value="3000000"></div>
+          <div class="result" aria-live="polite">
+            <div><span id="san-detail">—</span><b id="san-calc">—</b></div>
+            <div><span>Sanción mínima (10 UVT)</span><b id="san-min">—</b></div>
+            <div class="total"><span>Sanción a pagar</span><b id="san-pay">—</b></div>
+          </div>
+          <p class="hint" style="margin-top:12px">Usa la UVT del conversor. No incluye reducciones de sanciones, sanción por no declarar ni casos especiales: confirme con el Estatuto Tributario vigente.</p>
+        </article>
+
+        <article class="card tool" id="tool-int">
+          <span class="tile tile--teal" data-icon="clock"></span>
+          <h3 style="margin-top:16px">Intereses de mora</h3>
+          <div class="field"><label for="int-capital">Valor del impuesto o retención (COP)</label><input type="number" id="int-capital" inputmode="decimal" min="0" step="any" value="5000000"></div>
+          <p class="hint" style="margin:0 0 10px">Un tramo por cada periodo con tasa distinta. “Desde” es el primer día de mora y “Hasta” se cuenta completo.</p>
+          <div id="int-rows"></div>
+          <button class="btn btn-outline btn-sm" type="button" id="int-add" style="margin-top:6px">Agregar tramo</button>
+          <div class="result" aria-live="polite">
+            <div><span>Días de mora</span><b id="int-days">—</b></div>
+            <div><span>Intereses</span><b id="int-int">—</b></div>
+            <div class="total"><span>Total a pagar</span><b id="int-total">—</b></div>
+          </div>
+          <p class="hint" style="margin-top:12px">La tasa del ejemplo no es oficial. Escriba la tasa efectiva anual de mora que corresponda a cada periodo según la Superfinanciera y el Estatuto Tributario. Se convierte a tasa diaria: (1 + tasa)^(1/365) − 1.</p>
+        </article>
+      </div>
+
+      <div class="container" style="margin-top:20px">
+        <article class="card tool" id="tool-cal">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">
+            <span class="tile tile--slate" data-icon="clock"></span>
+            <h3 style="margin:0">Calendario tributario</h3>
+          </div>
+          <p class="hint" style="margin-bottom:16px">Los plazos los fija el Gobierno cada año por decreto, según el último dígito del NIT o de la cédula. Consulte el calendario oficial en dian.gov.co y registre aquí sus fechas para ver cuánto falta.</p>
+          <form id="cal-form" class="cal-form" novalidate>
+            <div class="field">
+              <label for="cal-obl">Obligación</label>
+              <select id="cal-obl">
+                <option>Declaración de renta</option>
+                <option>Declaración de IVA</option>
+                <option>Retención en la fuente</option>
+                <option>Información exógena</option>
+                <option>Impuesto de industria y comercio (ICA)</option>
+                <option value="otra">Otra…</option>
+              </select>
+            </div>
+            <div class="field" id="cal-otra-wrap" hidden><label for="cal-otra">Nombre</label><input type="text" id="cal-otra" maxlength="60"></div>
+            <div class="field"><label for="cal-cliente">Cliente (opcional)</label><input type="text" id="cal-cliente" maxlength="60"></div>
+            <div class="field"><label for="cal-fecha">Fecha límite</label><input type="date" id="cal-fecha"></div>
+            <div class="field"><button class="btn btn-teal" type="submit">Agregar</button></div>
+          </form>
+          <p class="form-msg" id="cal-msg" role="alert" hidden></p>
+          <ul class="venc-list" id="cal-list" aria-live="polite"></ul>
+          <p class="hint" id="cal-store" style="margin-top:12px">Los vencimientos se guardan solo en este navegador.</p>
+        </article>
       </div>
     </section>
   </template>

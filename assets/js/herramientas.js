@@ -59,5 +59,214 @@
   ["ret-base", "ret-custom"].forEach(function (id) { $(id).addEventListener("input", ret); });
   $("ret-tarifa").addEventListener("change", ret);
 
-  iva(); fromUvt(); ret();
+  // ---------- fechas ----------
+  var DAY = 86400000;
+  function parseDate(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s || "")) return null;
+    var p = s.split("-");
+    return Date.UTC(+p[0], +p[1] - 1, +p[2]);
+  }
+  function todayUtc() {
+    var n = new Date();
+    return Date.UTC(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+
+  // ---------- Sanciones ----------
+  function monthsLate(dueStr, filedStr) {
+    var due = parseDate(dueStr), filed = parseDate(filedStr);
+    if (due === null || filed === null) return null;
+    if (filed <= due) return 0;
+    var a = new Date(due), b = new Date(filed);
+    var m = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth());
+    if (b.getUTCDate() > a.getUTCDate()) m += 1;
+    return Math.max(m, 1);
+  }
+
+  var BASE_LABELS = {
+    imp: "Impuesto a cargo (COP)",
+    ing: "Ingresos brutos del periodo (COP)",
+    pat: "Patrimonio líquido del año anterior (COP)",
+    cor: "Mayor valor a pagar o menor saldo a favor (COP)",
+    ine: "Diferencia de impuesto por inexactitud (COP)",
+  };
+
+  function san() {
+    var tipo = $("san-tipo").value;
+    var caso = $("san-caso").value;
+    $("san-ext").hidden = tipo !== "ext";
+    $("san-cor-nivel").hidden = tipo !== "cor";
+    $("san-base-label").textContent = BASE_LABELS[tipo === "ext" ? caso : tipo];
+
+    var base = val("san-base");
+    var min = 10 * (val("uvt-valor") || 0);
+    $("san-min").textContent = money(min);
+
+    var calc = null, detail = "Sanción calculada", none = false;
+    if (base !== null) {
+      if (tipo === "ext") {
+        var m = monthsLate($("san-venc").value, $("san-pres").value);
+        if (m === null) { detail = "Escribe las dos fechas"; }
+        else if (m === 0) { none = true; calc = 0; detail = "Presentada a tiempo"; }
+        else {
+          var rate = caso === "imp" ? 0.05 : caso === "ing" ? 0.005 : 0.01;
+          var cap = caso === "imp" ? 1 : caso === "ing" ? 0.05 : 0.1;
+          calc = base * Math.min(rate * m, cap);
+          detail = m + (m === 1 ? " mes" : " meses") + " de retardo";
+        }
+      } else if (tipo === "cor") {
+        var r = parseFloat($("san-momento").value);
+        calc = base * r;
+        detail = num.format(r * 100) + " % del mayor valor";
+      } else {
+        calc = base;
+        detail = "100 % de la diferencia";
+      }
+    }
+    $("san-detail").textContent = detail;
+    $("san-calc").textContent = calc === null ? "—" : money(calc);
+    $("san-pay").textContent = calc === null ? "—" : none ? money(0) : money(Math.max(calc, min));
+  }
+  ["san-tipo", "san-caso", "san-momento", "san-venc", "san-pres"].forEach(function (id) { $(id).addEventListener("change", san); });
+  ["san-base", "uvt-valor"].forEach(function (id) { $(id).addEventListener("input", san); });
+
+  // ---------- Intereses de mora ----------
+  var tramos = [{ d: "2026-03-12", h: "2026-04-30", r: "25" }];
+
+  function drawTramos() {
+    var box = $("int-rows");
+    box.replaceChildren();
+    tramos.forEach(function (t, i) {
+      var row = document.createElement("div");
+      row.className = "tramo";
+      [["Desde", "date", "d"], ["Hasta", "date", "h"], ["Tasa EA (%)", "number", "r"]].forEach(function (f) {
+        var wrap = document.createElement("div");
+        wrap.className = "field";
+        var lab = document.createElement("label");
+        lab.htmlFor = "int-" + f[2] + i;
+        lab.textContent = f[0];
+        var inp = document.createElement("input");
+        inp.type = f[1];
+        inp.id = "int-" + f[2] + i;
+        if (f[1] === "number") { inp.min = "0"; inp.step = "any"; inp.inputMode = "decimal"; }
+        inp.value = t[f[2]];
+        inp.addEventListener("input", function () { t[f[2]] = inp.value; interest(); });
+        wrap.append(lab, inp);
+        row.append(wrap);
+      });
+      if (tramos.length > 1) {
+        var del = document.createElement("button");
+        del.type = "button";
+        del.className = "btn btn-outline btn-sm";
+        del.textContent = "Quitar";
+        del.setAttribute("aria-label", "Quitar tramo " + (i + 1));
+        del.addEventListener("click", function () { tramos.splice(i, 1); drawTramos(); interest(); });
+        row.append(del);
+      }
+      box.append(row);
+    });
+  }
+
+  function interest() {
+    var cap = val("int-capital");
+    var days = 0, total = 0, ok = cap !== null;
+    tramos.forEach(function (t) {
+      var d = parseDate(t.d), h = parseDate(t.h), r = parseFloat(t.r);
+      if (d === null || h === null || !isFinite(r) || r < 0 || h < d) { ok = false; return; }
+      var n = Math.round((h - d) / DAY) + 1;
+      days += n;
+      if (cap !== null) total += cap * (Math.pow(1 + r / 100, 1 / 365) - 1) * n;
+    });
+    $("int-days").textContent = ok ? String(days) : "—";
+    $("int-int").textContent = ok ? money(total) : "—";
+    $("int-total").textContent = ok ? money(cap + total) : "—";
+  }
+  $("int-capital").addEventListener("input", interest);
+  $("int-add").addEventListener("click", function () {
+    var last = tramos[tramos.length - 1];
+    var next = parseDate(last.h);
+    var from = next === null ? "" : new Date(next + DAY).toISOString().slice(0, 10);
+    tramos.push({ d: from, h: "", r: last.r });
+    drawTramos();
+    interest();
+  });
+
+  // ---------- Calendario de vencimientos ----------
+  var K_CAL = "td_vencimientos";
+  var storeOk = true;
+  function loadCal() {
+    try { return JSON.parse(localStorage.getItem(K_CAL)) || []; } catch (e) { storeOk = false; return []; }
+  }
+  function saveCal(list) {
+    try { localStorage.setItem(K_CAL, JSON.stringify(list)); } catch (e) { storeOk = false; }
+    if (!storeOk) $("cal-store").textContent = "Este navegador no permite guardar: los vencimientos se perderán al cerrar la página.";
+  }
+  var venc = loadCal();
+
+  function status(fecha) {
+    var diff = Math.round((parseDate(fecha) - todayUtc()) / DAY);
+    if (diff < 0) return { cls: "late", text: "Vencido hace " + -diff + (diff === -1 ? " día" : " días") };
+    if (diff === 0) return { cls: "soon", text: "Vence hoy" };
+    if (diff <= 7) return { cls: "soon", text: "Faltan " + diff + (diff === 1 ? " día" : " días") };
+    return { cls: "ok", text: "Faltan " + diff + " días" };
+  }
+
+  function drawCal() {
+    var ul = $("cal-list");
+    ul.replaceChildren();
+    if (!venc.length) {
+      var empty = document.createElement("li");
+      empty.className = "venc-empty";
+      empty.textContent = "Todavía no hay vencimientos. Agrega el primero con su fecha límite.";
+      ul.append(empty);
+      return;
+    }
+    venc.slice().sort(function (a, b) { return a.f < b.f ? -1 : a.f > b.f ? 1 : 0; }).forEach(function (v) {
+      var st = status(v.f);
+      var li = document.createElement("li");
+      li.className = "venc";
+      var main = document.createElement("div");
+      main.className = "venc-main";
+      var t = document.createElement("strong");
+      t.textContent = v.n;
+      var s = document.createElement("span");
+      s.textContent = (v.c ? v.c + " · " : "") + new Date(parseDate(v.f)).toLocaleDateString("es-CO", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" });
+      main.append(t, s);
+      var pill = document.createElement("span");
+      pill.className = "pill pill-" + st.cls;
+      pill.textContent = st.text;
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn btn-outline btn-sm";
+      del.textContent = "Quitar";
+      del.setAttribute("aria-label", "Quitar " + v.n);
+      del.addEventListener("click", function () {
+        venc = venc.filter(function (x) { return x.id !== v.id; });
+        saveCal(venc);
+        drawCal();
+      });
+      li.append(main, pill, del);
+      ul.append(li);
+    });
+  }
+
+  $("cal-obl").addEventListener("change", function () { $("cal-otra-wrap").hidden = $("cal-obl").value !== "otra"; });
+  $("cal-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var msg = $("cal-msg");
+    var sel = $("cal-obl");
+    var name = sel.value === "otra" ? $("cal-otra").value.trim() : sel.value;
+    var fecha = $("cal-fecha").value;
+    if (!name || parseDate(fecha) === null) {
+      msg.textContent = "Escribe el nombre de la obligación y elige la fecha límite.";
+      msg.hidden = false;
+      return;
+    }
+    msg.hidden = true;
+    venc.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), n: name, c: $("cal-cliente").value.trim(), f: fecha });
+    saveCal(venc);
+    $("cal-cliente").value = "";
+    drawCal();
+  });
+
+  iva(); fromUvt(); ret(); san(); drawTramos(); interest(); drawCal();
 };
