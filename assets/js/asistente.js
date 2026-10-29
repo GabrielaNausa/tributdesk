@@ -3,7 +3,7 @@
 
   var KB = [
     { k: ["plazo", "calendario", "vencimiento", "cuando declarar", "fecha"],
-      a: "Los plazos para declarar y pagar los fija el Gobierno Nacional por decreto, normalmente según el último dígito del NIT o de la cédula. Consulta el calendario tributario vigente en dian.gov.co y confirma tu fecha antes de presentar." },
+      a: "Los plazos para declarar y pagar los fija el Gobierno Nacional por decreto, normalmente según el último dígito del NIT o de la cédula. Puedes ver las fechas de 2026 escribiendo el NIT en Herramientas > Calendario tributario DIAN 2026. Confirma siempre tu fecha en dian.gov.co antes de presentar." },
     { k: ["renta", "declaracion de renta", "declarar renta"],
       a: "La declaración de renta se presenta anualmente. Quiénes deben declarar depende de topes de ingresos, patrimonio, consumos y otras condiciones expresados en UVT. Revisa los topes del año gravable en el Estatuto Tributario y en el decreto de plazos vigente." },
     { k: ["iva", "valor agregado"],

@@ -268,5 +268,173 @@
     drawCal();
   });
 
-  iva(); fromUvt(); ret(); san(); drawTramos(); interest(); drawCal();
+  // ---------- Calendario DIAN ----------
+  var DIAN = window.TD_DIAN;
+  var PRESETS = {
+    empresa: ["retencion", "iva-bim", "renta-pj"],
+    natural: ["renta-pn", "iva-cuat"],
+    gran: ["renta-gc", "iva-bim", "retencion"],
+  };
+  var selected = {};
+  PRESETS.empresa.forEach(function (id) { selected[id] = true; });
+  var upcoming = [];
+
+  function drawObl() {
+    var box = $("dian-obl");
+    box.replaceChildren();
+    var groups = {};
+    DIAN.obligaciones.forEach(function (o) { (groups[o.grupo] = groups[o.grupo] || []).push(o); });
+    Object.keys(groups).forEach(function (g) {
+      var fs = document.createElement("fieldset");
+      fs.className = "oblgroup";
+      var lg = document.createElement("legend");
+      lg.textContent = g;
+      fs.append(lg);
+      groups[g].forEach(function (o) {
+        var lab = document.createElement("label");
+        lab.className = "check";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = !!selected[o.id];
+        cb.addEventListener("change", function () { selected[o.id] = cb.checked; dian(); });
+        lab.append(cb, " " + o.nombre);
+        fs.append(lab);
+      });
+      box.append(fs);
+    });
+  }
+
+  function nitParts() {
+    var digits = $("dian-nit").value.replace(/\D/g, "");
+    if (!digits) return null;
+    return { digits: digits, last: parseInt(digits.slice(-1), 10), last2: parseInt(digits.slice(-2), 10) };
+  }
+
+  function pick(fechas, n) {
+    if (fechas.length === 10) return fechas[n.last === 0 ? 9 : n.last - 1];
+    if (fechas.length === 5) return fechas[Math.floor(((n.last === 0 ? 10 : n.last) - 1) / 2)];
+    return fechas[Math.floor(((n.last2 === 0 ? 100 : n.last2) - 1) / 2)];
+  }
+
+  function dstatus(f) {
+    var diff = Math.round((parseDate(f) - todayUtc()) / DAY);
+    if (diff < 0) return { cls: "past", text: "Pasó hace " + -diff + (diff === -1 ? " día" : " días"), past: true };
+    return status(f);
+  }
+
+  function longDate(f) {
+    return new Date(parseDate(f)).toLocaleDateString("es-CO", { timeZone: "UTC", weekday: "short", day: "numeric", month: "long", year: "numeric" });
+  }
+
+  function clienteLabel(n) { return $("dian-cliente").value.trim() || "NIT " + n.digits; }
+
+  function addVenc(it, n) {
+    var name = it.o.nombre + " - " + it.p.periodo;
+    var cli = clienteLabel(n);
+    var dup = venc.some(function (v) { return v.n === name && v.f === it.f && v.c === cli; });
+    if (dup) return false;
+    venc.push({ id: String(Date.now()) + Math.random().toString(36).slice(2, 6), n: name, c: cli, f: it.f });
+    return true;
+  }
+
+  function dian() {
+    var n = nitParts();
+    var msg = $("dian-msg");
+    var ul = $("dian-list");
+    var notas = $("dian-notas");
+    ul.replaceChildren();
+    notas.replaceChildren();
+    upcoming = [];
+    function emptyRow(text) {
+      var li = document.createElement("li");
+      li.className = "venc-empty";
+      li.textContent = text;
+      ul.append(li);
+    }
+    if (!n) { msg.textContent = "Escribe el NIT o la cédula para ver las fechas."; msg.hidden = false; emptyRow("Escribe el NIT o la cédula."); return; }
+    msg.hidden = true;
+
+    var items = [];
+    DIAN.obligaciones.forEach(function (o) {
+      if (!selected[o.id]) return;
+      o.periodos.forEach(function (p) { items.push({ o: o, p: p, f: p.fecha || pick(p.fechas, n) }); });
+      var li = document.createElement("li");
+      var b = document.createElement("strong");
+      b.textContent = o.nombre + ": ";
+      li.append(b, o.nota);
+      notas.append(li);
+    });
+    if (!items.length) { emptyRow("Elige al menos una obligación."); return; }
+
+    items.sort(function (a, b) { return a.f < b.f ? -1 : a.f > b.f ? 1 : a.o.nombre < b.o.nombre ? -1 : 1; });
+    var showPast = $("dian-pasadas").checked;
+    var shown = items.filter(function (it) { return showPast || !dstatus(it.f).past; });
+    if (!shown.length) { emptyRow("No quedan fechas pendientes para estas obligaciones en 2026. Marque “Mostrar fechas que ya pasaron” para verlas."); return; }
+
+    shown.forEach(function (it) {
+      var st = dstatus(it.f);
+      if (!st.past) upcoming.push(it);
+      var li = document.createElement("li");
+      li.className = "venc";
+      var main = document.createElement("div");
+      main.className = "venc-main";
+      var t = document.createElement("strong");
+      t.textContent = it.o.nombre;
+      var s = document.createElement("span");
+      s.textContent = it.p.periodo + " · " + longDate(it.f);
+      main.append(t, s);
+      var pill = document.createElement("span");
+      pill.className = "pill pill-" + st.cls;
+      pill.textContent = st.text;
+      var add = document.createElement("button");
+      add.type = "button";
+      add.className = "btn btn-outline btn-sm";
+      var name = it.o.nombre + " - " + it.p.periodo;
+      var cli = clienteLabel(n);
+      var already = venc.some(function (v) { return v.n === name && v.f === it.f && v.c === cli; });
+      add.textContent = already ? "Agregada" : "Agregar";
+      add.disabled = already;
+      add.setAttribute("aria-label", "Agregar a Mis vencimientos: " + name);
+      add.addEventListener("click", function () {
+        if (addVenc(it, n)) { saveCal(venc); drawCal(); dian(); }
+      });
+      li.append(main, pill, add);
+      ul.append(li);
+    });
+  }
+
+  document.querySelectorAll("#tool-dian [data-preset]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.dataset.preset;
+      selected = {};
+      if (k === "todas") DIAN.obligaciones.forEach(function (o) { selected[o.id] = true; });
+      else if (PRESETS[k]) PRESETS[k].forEach(function (id) { selected[id] = true; });
+      drawObl();
+      dian();
+    });
+  });
+  $("dian-nit").addEventListener("input", dian);
+  $("dian-cliente").addEventListener("input", dian);
+  $("dian-pasadas").addEventListener("change", dian);
+  $("dian-addall").addEventListener("click", function () {
+    var n = nitParts();
+    if (!n || !upcoming.length) return;
+    var added = 0;
+    upcoming.forEach(function (it) { if (addVenc(it, n)) added++; });
+    if (added) { saveCal(venc); drawCal(); }
+    dian();
+    var msg = $("dian-msg");
+    msg.textContent = added ? added + (added === 1 ? " fecha agregada" : " fechas agregadas") + " a Mis vencimientos." : "Esas fechas ya estaban en Mis vencimientos.";
+    msg.hidden = false;
+  });
+
+  var src = $("dian-fuente");
+  var a = document.createElement("a");
+  a.href = DIAN.pdf;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.textContent = "PDF oficial de la DIAN";
+  src.append("Fuente: ", a, " (" + DIAN.version + "). Última revisión: 29 de octubre de 2026. Las fechas se copiaron del PDF oficial y se verificaron con la regla de días hábiles del Decreto 2229 de 2023. Si la DIAN publica cambios, confirme en dian.gov.co antes de presentar.");
+
+  iva(); fromUvt(); ret(); san(); drawTramos(); interest(); drawCal(); drawObl(); dian();
 };

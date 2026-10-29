@@ -202,6 +202,18 @@ input[type="date"]:focus { border-color: var(--teal); outline: none; box-shadow:
 .pill-ok { background: var(--tint); color: var(--teal-dark); }
 .pill-soon { background: var(--amber); color: var(--navy); }
 .pill-late { background: #f8e1e1; color: #8c2323; }
+.pill-past { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.dian-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.oblgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 16px; margin-bottom: 14px; }
+.oblgroup { border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px 12px; margin: 0; min-width: 0; }
+.oblgroup legend { font-size: 12.5px; font-weight: 700; color: var(--navy); padding: 0 6px; }
+.check { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; font-weight: 500; color: var(--ink); margin: 6px 0 0; cursor: pointer; }
+.check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--teal); flex-shrink: 0; }
+.dian-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.dian-bar .check { margin: 0; }
+.dian-notas { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.dian-notas strong { color: var(--navy); }
 
 /* ---------- chat ---------- */
 .chat { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }

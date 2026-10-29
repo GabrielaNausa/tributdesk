@@ -356,12 +356,49 @@
       </div>
 
       <div class="container" style="margin-top:20px">
+        <article class="card tool" id="tool-dian">
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">
+            <span class="tile tile--teal" data-icon="clock"></span>
+            <h3 style="margin:0">Calendario tributario DIAN 2026</h3>
+          </div>
+          <p class="hint" style="margin-bottom:16px">Escriba el NIT o la cédula, elija las obligaciones y vea la fecha límite de cada una. Puede agregarlas a Mis vencimientos para seguir cuánto falta.</p>
+          <div class="dian-form">
+            <div class="field">
+              <label for="dian-nit">NIT o cédula (sin dígito de verificación)</label>
+              <input type="text" id="dian-nit" inputmode="numeric" maxlength="15" value="900123456" autocomplete="off">
+              <p class="hint">El valor es un ejemplo: cámbielo por el de su cliente.</p>
+            </div>
+            <div class="field">
+              <label for="dian-cliente">Cliente (opcional)</label>
+              <input type="text" id="dian-cliente" maxlength="60" autocomplete="off">
+            </div>
+          </div>
+          <div class="presets" role="group" aria-label="Atajos de obligaciones">
+            <button type="button" class="chip" data-preset="empresa">Empresa (persona jurídica)</button>
+            <button type="button" class="chip" data-preset="natural">Persona natural</button>
+            <button type="button" class="chip" data-preset="gran">Gran contribuyente</button>
+            <button type="button" class="chip" data-preset="todas">Todas</button>
+            <button type="button" class="chip" data-preset="ninguna">Ninguna</button>
+          </div>
+          <div class="oblgrid" id="dian-obl"></div>
+          <div class="dian-bar">
+            <label class="check"><input type="checkbox" id="dian-pasadas"> Mostrar fechas que ya pasaron</label>
+            <button type="button" class="btn btn-teal btn-sm" id="dian-addall">Agregar pendientes a Mis vencimientos</button>
+          </div>
+          <p class="form-msg" id="dian-msg" role="alert" hidden></p>
+          <ul class="venc-list" id="dian-list" aria-live="polite"></ul>
+          <ul class="dian-notas" id="dian-notas"></ul>
+          <p class="hint" id="dian-fuente" style="margin-top:14px"></p>
+        </article>
+      </div>
+
+      <div class="container" style="margin-top:20px">
         <article class="card tool" id="tool-cal">
           <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">
             <span class="tile tile--slate" data-icon="clock"></span>
-            <h3 style="margin:0">Calendario tributario</h3>
+            <h3 style="margin:0">Mis vencimientos</h3>
           </div>
-          <p class="hint" style="margin-bottom:16px">Los plazos los fija el Gobierno cada año por decreto, según el último dígito del NIT o de la cédula. Consulte el calendario oficial en dian.gov.co y registre aquí sus fechas para ver cuánto falta.</p>
+          <p class="hint" style="margin-bottom:16px">Agregue aquí las fechas de sus clientes, desde el calendario de arriba o a mano, y vea cuánto falta para cada una.</p>
           <form id="cal-form" class="cal-form" novalidate>
             <div class="field">
               <label for="cal-obl">Obligación</label>
@@ -489,6 +526,7 @@
 <script src="assets/js/auth.js"></script>
 <script src="assets/js/layout.js"></script>
 <script src="assets/js/normativa.js"></script>
+<script src="assets/js/calendario-data.js"></script>
 <script src="assets/js/herramientas.js"></script>
 <script src="assets/js/asistente.js"></script>
 <script src="assets/js/planes.js"></script>
